@@ -1,0 +1,768 @@
+
+R version 3.3.1 (2016-06-21) -- "Bug in Your Hair"
+Copyright (C) 2016 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin13.4.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> setwd("~/Dropbox/research/twitter-trolls/replication")
+> 
+> # loading libraries
+> library(foreign)
+> library(lme4)
+Loading required package: Matrix
+> library(ggplot2)
+> library(scales)
+> library(ggthemes)
+> library(texreg)
+Version:  1.36.7
+Date:     2016-06-21
+Author:   Philip Leifeld (University of Glasgow)
+
+Please cite the JSS article in your publications -- see citation("texreg").
+> library(rio)
+> 
+> options(stringsAsFactors=F)
+> 
+> ######################################################
+> ### APPENDING ALL DATA TOGETHER
+> ######################################################
+> 
+> countries <- c("greece", "uk", "germany", "spain")
+> d <- c()
+> for (country in countries){
++ 	df <- read.dta(paste0(country, ".dta"))
++ 	d <- rbind(d, df)
++ }
+> 
+> # do not include users with missing followers count (mostly inactive accounts)
+> d <- d[!is.na(d$followers_count),]
+> 
+> ######################################################
+> ### TABLE 1
+> ######################################################
+> 
+> pp <- aggregate(d$engaging_tweets*d$ntweets, 
++ 	by=list(country=d$country), 
++ 	FUN=sum, na.rm=TRUE)
+> pp$x <- (pp$x/aggregate(d$ntweets, 
++ 	by=list(country=d$country), 
++ 	FUN=sum, na.rm=TRUE)$x)
+> pp # engaging tweets
+  country         x
+1 Germany 0.3681864
+2  Greece 0.2567571
+3   Spain 0.4495477
+4      UK 0.5778181
+> 
+> pp <- aggregate(d$impolite_mentions*d$ntweets, 
++ 	by=list(country=d$country), 
++ 	FUN=sum, na.rm=TRUE)
+> pp$x <- (pp$x/aggregate(d$ntweets, 
++ 	by=list(country=d$country), 
++ 	FUN=sum, na.rm=TRUE)$x)
+> pp # impolite tweets
+  country          x
+1 Germany 0.06064199
+2  Greece 0.17935189
+3   Spain 0.03876033
+4      UK 0.05504603
+> 
+> pp <- aggregate(d$engaging_tweets, 
++ 	by=list(party=d$party, country=d$country), 
++ 	FUN=mean, na.rm=TRUE)
+> pp <- pp[order(pp$x),]
+> pp <- pp[!is.na(pp$x),]
+> tail(pp, n=10)
+                            party country         x
+9                         Piraten Germany 0.5795011
+33    An Independence from Europe      UK 0.5944074
+49 NO2EU – Yes to Workers’ Rights      UK 0.6058497
+37     Christian Peoples Alliance      UK 0.6103776
+25           Pirate Confederation   Spain 0.6115159
+46                     Liberty GB      UK 0.6211561
+61                      YOURvoice      UK 0.6393587
+60     We Demand a Referendum Now      UK 0.6534881
+42                Europeans Party      UK 0.6756019
+50                   Pirate Party      UK 0.6795727
+> 
+> d[d$twitter=="Nigel_Farage",]
+         twitter                             party incumbent elected
+212 Nigel_Farage United Kingdom Independence Party         1       1
+                name electability male ntweets mentions followers_count
+212 Nigel Farage MEP         safe    1       3    48781          191616
+    ideology eu_position spam_tweets positive_tweets impolite_tweets
+212  5.16283    4.964785        0.01       0.3166667      0.05333333
+    engaging_tweets europe_tweets endorsement_tweets morality_tweets
+212       0.5633333     0.1233333               0.37       0.1633333
+    spam_mentions positive_mentions impolite_mentions engaging_mentions
+212    0.04042107         0.3053064        0.09703102         0.7875726
+    europe_mentions endorsement_mentions morality_mentions endorsement_eu_prob
+212       0.1227447            0.1604344         0.1010432          0.08666667
+    issues_eu_prob campaign_eu_prob mobilization_EU_prob endorsement_nat_prob
+212      0.1633333             0.02                 0.06                 0.46
+    issues_nat_prob eu_nat_prob broadcasting_nat_prob mobilization_nat_prob
+212      0.07666667        0.07                  0.11             0.2533333
+    politicization_eu_prob salience_eu_prob national_prob country     ees  emcs
+212              0.1033333        0.1366667          0.56      UK 1826951 51951
+    votenl seatnl voteep incumbnl pmnl
+212    3.1      0   27.5        0    0
+> 
+> d[d$country=="Germany",][which.max(d$impolite_mentions[d$country=="Germany"]),]
+            twitter party incumbent elected                 name electability
+972 RicardaRiefling   NPD         0       0 10. Ricarda Riefling  unpromising
+    male ntweets mentions followers_count ideology eu_position spam_tweets
+972    0      20       35             651       NA          NA      0.0895
+    positive_tweets impolite_tweets engaging_tweets europe_tweets
+972          0.4735           0.155           0.243        0.3165
+    endorsement_tweets morality_tweets spam_mentions positive_mentions
+972             0.1835          0.1775     0.1085714         0.4385714
+    impolite_mentions engaging_mentions europe_mentions endorsement_mentions
+972         0.1965714             0.536       0.3042857            0.2068571
+    morality_mentions endorsement_eu_prob issues_eu_prob campaign_eu_prob
+972             0.132                0.17          0.234            0.247
+    mobilization_EU_prob endorsement_nat_prob issues_nat_prob eu_nat_prob
+972               0.1405               0.1705           0.132      0.1815
+    broadcasting_nat_prob mobilization_nat_prob politicization_eu_prob
+972                 0.324                  0.11                 0.2045
+    salience_eu_prob national_prob country     ees  emcs votenl seatnl voteep
+972           0.2735          0.36 Germany 1276002 41002    1.3      0      1
+    incumbnl pmnl
+972        0    0
+> 
+> ######################################################
+> ### FIGURE 1
+> ######################################################
+> 
+> cand_resp <- read.csv("candidate_tweet_responses.csv", 
++                        header = TRUE)
+> 
+> ## data for geom_rangeframe
+> df <- data.frame(
++   engaging_prob = c(0, 1),
++   n_res = c(0, 0.8),
++   country=rep(unique(cand_resp$country), each=2))
+> 
+> ## Plot direct response "count" (attracted) dep. on engaging
+> ## Poisson
+> ggplot(cand_resp, 
++   aes(x = engaging_prob, y = n_res, group=country)) +
++   stat_smooth(method = "glm", method.args = list(family = "poisson"),
++     aes(color=country)) +
++   theme_tufte() +
++   xlab("Probability of engaging tweet (candidate)") +
++   ylab("Average number of responses (by public)") +
++   #scale_y_continuous(limits=c(0, 1)) + 
++   facet_wrap(~country, scales = "free") +
++   scale_color_brewer("", palette = "Set1") +
++   theme(legend.position="none") +
++   geom_rangeframe(data=df)
+> 
+> ggsave(file="figure1.pdf", height = 4, width = 8)
+> 
+> ######################################################
+> ### FIGURE 2
+> ######################################################
+> 
+> pd <- data.frame(
++ 	value = c(d$engaging_tweets, d$impolite_mentions),
++ 	country = c(d$country, d$country),
++ 	type = rep(c("Engaging (based on candidates)", "Impolite (based on public)"),
++ 		each=nrow(d)))
+> 
+> p <- ggplot(pd, aes(y=country, x=value))
+> pq <- p + geom_jitter(position=position_jitter(height=.50), size=.75,
++ 	aes(color=country, shape=country)) +
++     scale_x_continuous("Estimated proportion of tweets in each category",
++     	label=percent) +
++     facet_wrap(~type) +
++     theme_tufte() + 
++     scale_color_brewer("", palette = "Set1") +
++     scale_shape_discrete("") +
++     geom_rangeframe(sides="bl", data=data.frame(value=c(0, 1), country=NA)) +
++     theme(axis.ticks.y=element_blank(), axis.title.y = element_blank()) +
++       theme(#axis.ticks.x = element_blank(), 
++         #axis.ticks.y = element_blank(),
++         legend.position = "none",
++         legend.margin=unit(0, "cm"))
+> pq
+Warning message:
+Removed 108 rows containing missing values (geom_point). 
+> 
+> ggsave(file="figure2.pdf", height = 3.25, width = 8)
+Warning message:
+Removed 108 rows containing missing values (geom_point). 
+> 
+> ######################################################
+> ### TABLE 2
+> ######################################################
+> 
+> # Model 1
+> reg1 <- lmer(impolite_mentions*100 ~ 1 + 
++ 			I(engaging_tweets*100) +
++ 			factor(country) +
++ 			(1 | party),
++ 			data = d,
++ 			weights = d$ntweets)
+> 
+> # Model 2
+> reg2 <- lmer(impolite_mentions*100 ~ 1 + 
++ 			I(engaging_tweets*100) +
++ 			incumbent + factor(electability) +
++ 			male + 
++ 			log(followers_count+1) + 
++ 			I(votenl/100) + 
++ 			pmnl + 
++ 			factor(country) +
++ 			(1 | party),
++ 			data = d,
++ 			weights = d$ntweets)
+> 
+> # Model 3
+> reg3 <- lmer(impolite_mentions*100 ~ 1 + 
++ 			I(engaging_tweets*100) +
++ 			incumbent + factor(electability) +
++ 			male + 
++ 			log(followers_count+1) + 
++ 			I(votenl/100) + 
++ 			pmnl + 
++ 			ideology + 
++ 			eu_position +
++ 			factor(country) +
++ 			(1 | party),
++ 			data = d,
++ 			weights = d$ntweets)
+> 
+> # Model 4
+> reg4 <- lmer(impolite_mentions*100 ~ 1 + 
++ 			I(engaging_tweets*100)*factor(country) +
++ 			incumbent + factor(electability) +
++ 			male + 
++ 			log(followers_count+1) + 
++ 			I(votenl/100) + 
++ 			pmnl + 
++ 			(1 | party),
++ 			data = d,
++ 			weights = d$ntweets)
+> 
+> # Model 5
+> reg5 <- lmer(impolite_mentions * morality_mentions*100 ~ 1 + 
++ 			I(engaging_tweets*100) +
++ 			factor(country) +
++ 			incumbent + factor(electability) +
++ 			male + 
++ 			log(followers_count+1) + 
++ 			I(votenl/100) + 
++ 			pmnl + 
++ 			(1 | party),
++ 			data = d,
++ 			weights = d$ntweets)
+> 
+> # main marginal effect in reg 2
+> mean(d$engaging_tweets, na.rm=TRUE) # average
+[1] 0.4247811
+> sd(d$engaging_tweets, na.rm=TRUE) * 100 # sd 
+[1] 18.09528
+> summary(d$engaging_tweets*100) # quantile: from 25% to 75% == 25 points
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.50   30.71   44.56   42.48   55.33   92.33      46 
+> 25 * mean(coef(reg2)[[1]][,2]) # expected effect for that increase
+[1] 1.192956
+> (0.25 * mean(coef(reg2)[[1]][,2]) * 100)/ sd(d$impolite_mentions, na.rm=TRUE) # magnitude of effect, in % of std dev in impolite mentions
+[1] 18.9182
+> 
+> # compute marginal effect in Greece, Spain, and UK
+> beta.hat <- coef(reg4)[[1]][1,]
+> cov <- vcov(reg4)
+> 
+> # marginal effect GERMANY
+> (dy.dx <- as.numeric(beta.hat["I(engaging_tweets * 100)"]))
+[1] 0.02443249
+> (se.dy.dx <- sqrt(cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100)"]))
+[1] 0.03354457
+> dnorm(dy.dx / se.dy.dx)
+[1] 0.3059934
+> 
+> # marginal effect GREECE
+> (dy.dx <- as.numeric(beta.hat["I(engaging_tweets * 100)"] + beta.hat["I(engaging_tweets * 100):factor(country)Greece"]))
+[1] 0.0252952
+> # standard error of marginal effect
+> (se.dy.dx <- sqrt(cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100)"] + 
++ 	cov["I(engaging_tweets * 100):factor(country)Greece", "I(engaging_tweets * 100):factor(country)Greece"] + 
++ 	2*cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100):factor(country)Greece"]))
+[1] 0.04118983
+> dnorm(dy.dx / se.dy.dx)
+[1] 0.330382
+> 
+> # marginal effect SPAIN
+> (dy.dx <- as.numeric(beta.hat["I(engaging_tweets * 100)"] + beta.hat["I(engaging_tweets * 100):factor(country)Spain"]))
+[1] 0.06579408
+> # standard error of marginal effect
+> (se.dy.dx <- sqrt(cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100)"] + 
++ 	cov["I(engaging_tweets * 100):factor(country)Spain", "I(engaging_tweets * 100):factor(country)Spain"] + 
++ 	2*cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100):factor(country)Spain"]))
+[1] 0.02562531
+> dnorm(dy.dx / se.dy.dx)
+[1] 0.0147712
+> 
+> # marginal effect UK
+> (dy.dx <- as.numeric(beta.hat["I(engaging_tweets * 100)"] + beta.hat["I(engaging_tweets * 100):factor(country)UK"]))
+[1] 0.05156238
+> # standard error of marginal effect
+> (se.dy.dx <- sqrt(cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100)"] + 
++ 	cov["I(engaging_tweets * 100):factor(country)UK", "I(engaging_tweets * 100):factor(country)UK"] + 
++ 	2*cov["I(engaging_tweets * 100)", "I(engaging_tweets * 100):factor(country)UK"]))
+[1] 0.02297744
+> dnorm(dy.dx / se.dy.dx)
+[1] 0.03216733
+> 
+> # main marginal effect in reg 5
+> mean(d$engaging_tweets, na.rm=TRUE) # average
+[1] 0.4247811
+> sd(d$engaging_tweets, na.rm=TRUE) * 100 # sd 
+[1] 18.09528
+> summary(d$engaging_tweets*100) # quantile: from 25% to 75% == 25 points
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.50   30.71   44.56   42.48   55.33   92.33      46 
+> 25 * mean(coef(reg5)[[1]][,2]) # expected effect for that increase
+[1] 0.2692809
+> (0.25 * mean(coef(reg5)[[1]][,2]) * 100)/ sd(d$impolite_mentions * d$morality_mentions, na.rm=TRUE) # magnitude of effect, in % of std dev in impolite mentions
+[1] 34.00649
+> 
+> # output: regression table in latex format
+> texreg::texreg(list(reg1, reg2, reg3, reg4, reg5), digits = 2,
++     custom.coef.names=c('Intercept', "\\% Engaging tweets sent", 
++ 		"Greece (dummy)", "Spain (dummy)", "UK (dummy)",
++ 		"Candidate is incumbent", "Viability: Safe", "Viability: Unpromising",
++ 		"Candidate is male", "log(count of followers)", "Vote share (national)",
++ 		"Prime minister (national)", 
++ 		"LR position",
++ 		"EU position", "Engaging $\\times$ Greece",
++ 		 "Engaging $\\times$ Spain",  "Engaging $\\times$ UK"),
++           dcolumn=TRUE, stars=c(.01, .05, .10))
+
+\usepackage{dcolumn}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{l D{.}{.}{5.5} D{.}{.}{5.5} D{.}{.}{5.5} D{.}{.}{5.5} D{.}{.}{4.5} }
+\hline
+ & \multicolumn{1}{c}{Model 1} & \multicolumn{1}{c}{Model 2} & \multicolumn{1}{c}{Model 3} & \multicolumn{1}{c}{Model 4} & \multicolumn{1}{c}{Model 5} \\
+\hline
+Intercept                 & 4.56^{***}  & 4.54^{***}  & 15.38^{***} & 5.17^{***}  & 0.41       \\
+                          & (1.02)      & (1.34)      & (4.11)      & (1.62)      & (0.25)     \\
+\\% Engaging tweets sent  & 0.05^{***}  & 0.05^{***}  & 0.03^{**}   & 0.02        & 0.01^{***} \\
+                          & (0.01)      & (0.01)      & (0.01)      & (0.03)      & (0.00)     \\
+Greece (dummy)            & 12.70^{***} & 12.74^{***} & 15.42^{***} & 12.58^{***} & 0.29       \\
+                          & (1.34)      & (1.34)      & (1.52)      & (1.96)      & (0.28)     \\
+Spain (dummy)             & -2.84^{**}  & -3.20^{***} & -3.21^{**}  & -4.74^{**}  & -0.22      \\
+                          & (1.13)      & (1.14)      & (1.31)      & (1.91)      & (0.25)     \\
+UK (dummy)                & -1.55       & -1.72       & -2.79^{*}   & -2.65       & -0.21      \\
+                          & (1.15)      & (1.16)      & (1.46)      & (2.01)      & (0.24)     \\
+Candidate is incumbent    &             & 0.13        & -0.20       & 0.15        & -0.07      \\
+                          &             & (0.49)      & (0.51)      & (0.49)      & (0.07)     \\
+Viability: Safe           &             & -0.13       & -0.05       & -0.13       & 0.05       \\
+                          &             & (0.55)      & (0.53)      & (0.56)      & (0.08)     \\
+Viability: Unpromising    &             & 0.07        & 0.01        & 0.10        & -0.03      \\
+                          &             & (0.38)      & (0.36)      & (0.38)      & (0.06)     \\
+Candidate is male         &             & -0.30       & -0.28       & -0.31       & -0.07^{*}  \\
+                          &             & (0.26)      & (0.25)      & (0.26)      & (0.04)     \\
+log(count of followers)   &             & 0.14        & 0.22^{*}    & 0.15^{*}    & -0.01      \\
+                          &             & (0.09)      & (0.13)      & (0.09)      & (0.01)     \\
+Vote share (national)     &             & -5.37       & -2.09       & -5.40       & -0.95      \\
+                          &             & (3.96)      & (4.48)      & (4.03)      & (0.86)     \\
+Prime minister (national) &             & 0.08        & 0.00        & 0.07        & 0.07       \\
+                          &             & (1.38)      & (1.44)      & (1.40)      & (0.26)     \\
+LR position               &             &             & -0.60^{**}  &             &            \\
+                          &             &             & (0.25)      &             &            \\
+EU position               &             &             & -1.35^{**}  &             &            \\
+                          &             &             & (0.59)      &             &            \\
+Engaging $\times$ Greece  &             &             &             & 0.00        &            \\
+                          &             &             &             & (0.05)      &            \\
+Engaging $\times$ Spain   &             &             &             & 0.04        &            \\
+                          &             &             &             & (0.04)      &            \\
+Engaging $\times$ UK      &             &             &             & 0.03        &            \\
+                          &             &             &             & (0.04)      &            \\
+\hline
+AIC                       & 3659.88     & 3663.85     & 2580.88     & 3682.59     & 1446.93    \\
+BIC                       & 3690.66     & 3725.41     & 2646.80     & 3757.34     & 1508.48    \\
+Log Likelihood            & -1822.94    & -1817.93    & -1274.44    & -1824.30    & -709.46    \\
+Num. obs.                 & 600         & 600         & 455         & 600         & 600        \\
+Num. groups: party        & 58          & 58          & 48          & 58          & 58         \\
+Var: party (Intercept)    & 3.84        & 3.76        & 4.96        & 3.92        & 0.22       \\
+Var: Residual             & 1783.59     & 1784.89     & 1447.82     & 1786.86     & 39.17      \\
+\hline
+\multicolumn{6}{l}{\scriptsize{$^{***}p<0.01$, $^{**}p<0.05$, $^*p<0.1$}}
+\end{tabular}
+\caption{Statistical models}
+\label{table:coefficients}
+\end{center}
+\end{table}
+> 
+> ######################################################
+> ### FIGURE 3
+> ######################################################
+> 
+> ## we assume that no responses implies 0 impolite responses
+> cand_resp2 <- cand_resp
+> cand_resp2$r_imp[is.na(cand_resp2$r_imp)] <- 0
+> 
+> ## Plot direct response "count" (attracted) dep. on engaging
+> ## Poisson
+> df <- data.frame(
++   r_imp = c(0, .03, .025, .075, 0, .006, 0, .015),
++   engaging_prob = c(0, 1),
++   country=rep(sort(unique(cand_resp2$country)), each=2))
+> 
+> ggplot(cand_resp2, aes(y = r_imp, x = engaging_prob)) +
++   stat_smooth(method = "glm", colour = "black") +
++   theme_tufte() +
++   xlab("Probability of tweet being engaging") +
++   ylab("Probability of impolite response tweet") +
++   facet_wrap(~country, scales = "free") +
++   geom_rangeframe(data=df)
+> 
+> ggsave(file="figure3.pdf", height = 4, width = 8)
+> 
+> ######################################################
+> ### TABLE 4
+> ######################################################
+> 
+> de <- rio::import("germany.dta")
+> uk <- rio::import("uk.dta")
+> esp <- rio::import("spain.dta")
+> gr <- rio::import("greece.dta")
+> elect <- rbind(de[, c("twitter", "electability")],
++                uk[, c("twitter", "electability")],
++                esp[, c("twitter", "electability")],
++                gr[, c("twitter", "electability")])
+> 
+> cand_resp1 <- merge(cand_resp, elect, by = "twitter")
+> 
+> ## grand mean center party level predictors
+> cand_resp1$votenl_cent=cand_resp1$votenl/100-mean(cand_resp1$votenl/100)
+> cand_resp1$ideology_cent=cand_resp1$ideology-mean(cand_resp1$ideology, na.rm=T)
+> cand_resp1$eu_position_cent=cand_resp1$eu_position-mean(cand_resp1$eu_position, na.rm=T)
+> 
+> ## we assume that no responses implies 0 impolite responses
+> cand_resp2 <- cand_resp1
+> cand_resp2$r_imp[is.na(cand_resp2$r_imp)] <- 0
+> 
+> # do not include users with missing followers count (mostly inactive accounts)
+> cand_resp2 <- cand_resp2[!is.na(cand_resp2$followers_count),]
+> 
+> ###model 1, adding a random intercept for parties and using grand mean centered vote share
+> m.1_new <- lmer(r_imp*100 ~ 1 + 
++               I(engaging_prob*100) + 
++               as.factor(country) +
++               (1 + engaging_prob | screen_name)+
++                 (1 | party), 
++             data = cand_resp2)
+> 
+> summary(m.1_new)
+Linear mixed model fit by REML ['lmerMod']
+Formula: r_imp * 100 ~ 1 + I(engaging_prob * 100) + as.factor(country) +  
+    (1 + engaging_prob | screen_name) + (1 | party)
+   Data: cand_resp2
+
+REML criterion at convergence: 764191.5
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-6.6463 -0.1700 -0.0478 -0.0015 23.1615 
+
+Random effects:
+ Groups      Name          Variance Std.Dev. Corr 
+ screen_name (Intercept)    3.046   1.7453        
+             engaging_prob  5.016   2.2396   -0.62
+ party       (Intercept)    0.110   0.3317        
+ Residual                  17.013   4.1246        
+Number of obs: 134330, groups:  screen_name, 612; party, 59
+
+Fixed effects:
+                          Estimate Std. Error t value
+(Intercept)               0.553990   0.220459   2.513
+I(engaging_prob * 100)    0.010612   0.001171   9.059
+as.factor(country)Greece  1.820137   0.319872   5.690
+as.factor(country)Spain  -0.640535   0.262112  -2.444
+as.factor(country)UK     -0.161981   0.260124  -0.623
+
+Correlation of Fixed Effects:
+            (Intr) I(_*10 as.()G as.()S
+I(ngg_*100) -0.193                     
+as.fctr(c)G -0.668  0.023              
+as.fctr(c)S -0.800 -0.050  0.557       
+as.fctr()UK -0.805 -0.058  0.561  0.689
+> 
+> ###model 2, adding a random intercept for parties and using grand mean centered vote share
+> m.2_new <- lmer(r_imp*100 ~ 1 + 
++               I(engaging_prob*100) + 
++               incumbnl +
++               log(followers_count + 1) +
++               male + 
++               pmnl + 
++               electability +
++                 votenl_cent +
++               as.factor(country) +
++               (1 + engaging_prob | screen_name)+
++                 (1 | party), 
++             data = cand_resp2)
+> 
+> summary(m.2_new)
+Linear mixed model fit by REML ['lmerMod']
+Formula: 
+r_imp * 100 ~ 1 + I(engaging_prob * 100) + incumbnl + log(followers_count +  
+    1) + male + pmnl + electability + votenl_cent + as.factor(country) +  
+    (1 + engaging_prob | screen_name) + (1 | party)
+   Data: cand_resp2
+
+REML criterion at convergence: 764180.9
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-6.6281 -0.1702 -0.0477 -0.0026 23.1602 
+
+Random effects:
+ Groups      Name          Variance Std.Dev. Corr 
+ screen_name (Intercept)    2.95850 1.720         
+             engaging_prob  4.97722 2.231    -0.61
+ party       (Intercept)    0.09122 0.302         
+ Residual                  17.01236 4.125         
+Number of obs: 134330, groups:  screen_name, 612; party, 59
+
+Fixed effects:
+                          Estimate Std. Error t value
+(Intercept)              -0.653460   0.429599  -1.521
+I(engaging_prob * 100)    0.010523   0.001168   9.007
+incumbnl                  0.075350   0.307943   0.245
+log(followers_count + 1)  0.171158   0.038767   4.415
+male                      0.148664   0.122797   1.211
+pmnl                      0.148628   0.300027   0.495
+electabilitysafe         -0.092672   0.234799  -0.395
+electabilityunpromising  -0.070590   0.223358  -0.316
+votenl_cent              -1.079373   0.893363  -1.208
+as.factor(country)Greece  1.864729   0.310135   6.013
+as.factor(country)Spain  -0.771990   0.260446  -2.964
+as.factor(country)UK     -0.138520   0.251607  -0.551
+
+Correlation of Fixed Effects:
+            (Intr) I(_*10 incmbn l(_+1) male   pmnl   elctbltys elctbltyn
+I(ngg_*100) -0.086                                                       
+incumbnl    -0.138  0.002                                                
+lg(fllw_+1) -0.702 -0.018  0.003                                         
+male        -0.164  0.001  0.020 -0.025                                  
+pmnl         0.061 -0.001 -0.814  0.032  0.005                           
+electbltysf -0.549  0.000 -0.004  0.165 -0.024  0.056                    
+elctbltynpr -0.593 -0.001 -0.015  0.222 -0.030  0.048  0.922             
+votenl_cent  0.130  0.001 -0.365 -0.070 -0.027 -0.159 -0.109    -0.068   
+as.fctr(c)G -0.315  0.023  0.018  0.004 -0.009 -0.007 -0.013    -0.042   
+as.fctr(c)S -0.374 -0.046  0.184 -0.094  0.001 -0.194  0.059     0.033   
+as.fctr()UK -0.401 -0.059  0.073  0.011 -0.005 -0.071 -0.003    -0.033   
+            vtnl_c as.()G as.()S
+I(ngg_*100)                     
+incumbnl                        
+lg(fllw_+1)                     
+male                            
+pmnl                            
+electbltysf                     
+elctbltynpr                     
+votenl_cent                     
+as.fctr(c)G -0.027              
+as.fctr(c)S  0.041  0.538       
+as.fctr()UK  0.002  0.561  0.684
+> 
+> ###model 3, adding a random intercept for parties and using grand mean centered vote share
+> m.3_new <- lmer(r_imp*100 ~ 1 + 
++               I(engaging_prob*100) + 
++               incumbnl +
++               log(followers_count + 1) +
++               male + 
++               pmnl + 
++               electability +
++                 votenl_cent  +
++               as.factor(country) * I(engaging_prob*100) +
++                 (1 + engaging_prob | screen_name)+
++                 (1 | party), 
++             data = cand_resp2)
+> 
+> summary(m.3_new)
+Linear mixed model fit by REML ['lmerMod']
+Formula: 
+r_imp * 100 ~ 1 + I(engaging_prob * 100) + incumbnl + log(followers_count +  
+    1) + male + pmnl + electability + votenl_cent + as.factor(country) *  
+    I(engaging_prob * 100) + (1 + engaging_prob | screen_name) +  
+    (1 | party)
+   Data: cand_resp2
+
+REML criterion at convergence: 764193.4
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-6.5629 -0.1691 -0.0465 -0.0027 23.1577 
+
+Random effects:
+ Groups      Name          Variance Std.Dev. Corr 
+ screen_name (Intercept)    2.90597 1.7047        
+             engaging_prob  4.37875 2.0925   -0.59
+ party       (Intercept)    0.08748 0.2958        
+ Residual                  17.01523 4.1250        
+Number of obs: 134330, groups:  screen_name, 612; party, 59
+
+Fixed effects:
+                                                 Estimate Std. Error t value
+(Intercept)                                     -0.867120   0.442500  -1.960
+I(engaging_prob * 100)                           0.017055   0.003141   5.430
+incumbnl                                         0.081997   0.306270   0.268
+log(followers_count + 1)                         0.168108   0.039099   4.300
+male                                             0.145063   0.123610   1.174
+pmnl                                             0.151720   0.298600   0.508
+electabilitysafe                                -0.085525   0.236913  -0.361
+electabilityunpromising                         -0.065276   0.225551  -0.289
+votenl_cent                                     -1.118698   0.889832  -1.257
+as.factor(country)Greece                         1.836753   0.350922   5.234
+as.factor(country)Spain                         -0.301446   0.296462  -1.017
+as.factor(country)UK                             0.043620   0.287145   0.152
+I(engaging_prob * 100):as.factor(country)Greece  0.002903   0.005188   0.560
+I(engaging_prob * 100):as.factor(country)Spain  -0.011609   0.003632  -3.196
+I(engaging_prob * 100):as.factor(country)UK     -0.005524   0.003573  -1.546
+
+Correlation matrix not shown by default, as p = 15 > 12.
+Use print(x, correlation=TRUE)  or
+	 vcov(x)	 if you need it
+
+> 
+> 
+> ##controliing for ideology and party position
+> m.4_new <- lmer(r_imp*100 ~ 1 + 
++                   I(engaging_prob*100) + 
++                   incumbnl +
++                   log(followers_count + 1) +
++                   male + 
++                   pmnl + 
++                   electability +
++                   votenl_cent  +
++                   as.factor(country) +
++                   ideology_cent +
++                   eu_position_cent+
++                   (1 + engaging_prob | screen_name)+
++                   (1 | party), 
++                 data = cand_resp2)
+> 
+> summary(m.4_new)
+Linear mixed model fit by REML ['lmerMod']
+Formula: 
+r_imp * 100 ~ 1 + I(engaging_prob * 100) + incumbnl + log(followers_count +  
+    1) + male + pmnl + electability + votenl_cent + as.factor(country) +  
+    ideology_cent + eu_position_cent + (1 + engaging_prob | screen_name) +  
+    (1 | party)
+   Data: cand_resp2
+
+REML criterion at convergence: 682118
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-7.0518 -0.1611 -0.0443 -0.0021 23.6401 
+
+Random effects:
+ Groups      Name          Variance  Std.Dev. Corr 
+ screen_name (Intercept)    3.608805 1.89969       
+             engaging_prob  5.915371 2.43215  -0.75
+ party       (Intercept)    0.001311 0.03621       
+ Residual                  16.329456 4.04097       
+Number of obs: 120798, groups:  screen_name, 451; party, 48
+
+Fixed effects:
+                          Estimate Std. Error t value
+(Intercept)              -0.642357   0.605359  -1.061
+I(engaging_prob * 100)    0.009940   0.001371   7.251
+incumbnl                  0.142805   0.243455   0.587
+log(followers_count + 1)  0.213764   0.061156   3.495
+male                      0.084713   0.086525   0.979
+pmnl                      0.071853   0.250453   0.287
+electabilitysafe         -0.087936   0.231758  -0.379
+electabilityunpromising  -0.063446   0.221885  -0.286
+votenl_cent              -1.015130   0.675256  -1.503
+as.factor(country)Greece  3.073150   0.305619  10.056
+as.factor(country)Spain  -0.989373   0.230199  -4.298
+as.factor(country)UK     -0.862640   0.270711  -3.187
+ideology_cent             0.042364   0.058379   0.726
+eu_position_cent         -0.447010   0.141750  -3.154
+
+Correlation matrix not shown by default, as p = 14 > 12.
+Use print(x, correlation=TRUE)  or
+	 vcov(x)	 if you need it
+
+> 
+> # main marginal effect in model 2
+> mean(cand_resp2$engaging_prob, na.rm=TRUE) # average
+[1] 0.4733834
+> sd(cand_resp2$engaging_prob, na.rm=TRUE) * 100 # sd 
+[1] 32.6792
+> summary(cand_resp2$engaging_prob*100) # quantile: from 25% to 75% == 60 points
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   17.00   45.00   47.34   78.00  100.00 
+> 61 * mean(coef(m.2_new)[[1]][,3]) # expected effect for that increase
+[1] 0.6418847
+> (61 * mean(coef(m.2_new)[[1]][,3]))/ sd(cand_resp2$r_imp, na.rm=TRUE) # magnitude of effect, in % of std dev in impolite mentions
+[1] 14.77286
+> 
+> # compute marginal effect in Greece, Spain, and UK
+> beta.hat <- coef(m.3_new)[[1]][1,]
+> cov <- vcov(m.3_new)
+> 
+> # marginal effect: GERMANY
+> (dy.dx <- as.numeric(beta.hat["I(engaging_prob * 100)"]))
+[1] 0.01705537
+> (se.dy.dx <- sqrt(cov["I(engaging_prob * 100)", "I(engaging_prob * 100)"]))
+[1] 0.003140839
+> dnorm(dy.dx / se.dy.dx)
+[1] 1.577179e-07
+> 
+> # marginal effect: GREECE
+> (dy.dx <- mean(beta.hat[,"I(engaging_prob * 100)"]) + mean(beta.hat[,"I(engaging_prob * 100):as.factor(country)Greece"]))
+[1] 0.01995882
+> # standard error of marginal effect
+> (se.dy.dx <- sqrt(cov["I(engaging_prob * 100)", "I(engaging_prob * 100)"] + 
++   cov["I(engaging_prob * 100):as.factor(country)Greece", "I(engaging_prob * 100):as.factor(country)Greece"] + 
++   2*cov["I(engaging_prob * 100)", "I(engaging_prob * 100):as.factor(country)Greece"]))
+[1] 0.004131436
+> dnorm(dy.dx / se.dy.dx)
+[1] 3.412559e-06
+> 
+> # marginal effect: SPAIN
+> (dy.dx <- mean(beta.hat[,"I(engaging_prob * 100)"]) + mean(beta.hat[,"I(engaging_prob * 100):as.factor(country)Spain"]))
+[1] 0.005446572
+> # standard error of marginal effect
+> (se.dy.dx <- sqrt(cov["I(engaging_prob * 100)", "I(engaging_prob * 100)"] + 
++   cov["I(engaging_prob * 100):as.factor(country)Spain", "I(engaging_prob * 100):as.factor(country)Spain"] + 
++   2*cov["I(engaging_prob * 100)", "I(engaging_prob * 100):as.factor(country)Spain"]))
+[1] 0.001824543
+> dnorm(dy.dx / se.dy.dx)
+[1] 0.004632948
+> 
+> # marginal effect: UK
+> (dy.dx <- mean(beta.hat[,"I(engaging_prob * 100)"]) + mean(beta.hat[,"I(engaging_prob * 100):as.factor(country)UK"]))
+[1] 0.01153148
+> # standard error of marginal effect
+> (se.dy.dx <- sqrt(cov["I(engaging_prob * 100)", "I(engaging_prob * 100)"] + 
++   cov["I(engaging_prob * 100):as.factor(country)UK", "I(engaging_prob * 100):as.factor(country)UK"] + 
++   2*cov["I(engaging_prob * 100)", "I(engaging_prob * 100):as.factor(country)UK"]))
+[1] 0.001702753
+> dnorm(dy.dx / se.dy.dx)
+[1] 4.383166e-11
+> 
+> proc.time()
+   user  system elapsed 
+ 69.226   7.826  82.064 
